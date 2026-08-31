@@ -1,7 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
-import { useApp } from '@/context';
-import type { VoiceNote } from '@/types';
-import { AlertTriangle, X, Check, Volume2, Play, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import { useApp } from "@/context";
+import type { VoiceNote } from "@/types";
+import {
+  AlertTriangle,
+  X,
+  Check,
+  Volume2,
+  Play,
+  RefreshCw,
+} from "lucide-react";
 
 export default function MissedDoseAlarm() {
   const { state, currentUser, acknowledgeAlert } = useApp();
@@ -11,28 +18,27 @@ export default function MissedDoseAlarm() {
   const [usingVoiceNote, setUsingVoiceNote] = useState(false);
   const [voiceNoteLabel, setVoiceNoteLabel] = useState<string | null>(null);
 
-  const elderId = currentUser?.role === 'elder' ? currentUser.id : null;
+  const elderId = currentUser?.role === "elder" ? currentUser.id : null;
 
   const activeAlerts = elderId
-    ? state.alerts.filter((a) => a.elderId === elderId && !a.acknowledged && !dismissed.has(a.id))
+    ? state.alerts.filter(
+        (a) => a.elderId === elderId && !a.acknowledged && !dismissed.has(a.id),
+      )
     : [];
 
   const alert = activeAlerts[0] ?? null;
 
-  // Find the best voice note for this alert's prescription (or any elder voice note as fallback)
+  // Find the voice note for this alert's specific prescription.
   const findVoiceNote = (): VoiceNote | null => {
     if (!elderId) return null;
     const elderNotes = state.voiceNotes.filter((n) => n.elderId === elderId);
     if (alert) {
-      // prefer a note tied to this specific prescription
-      const match = elderNotes.find((n) => n.prescriptionId === alert.prescriptionId);
+      const match = elderNotes.find(
+        (n) => n.prescriptionId === alert.prescriptionId,
+      );
       if (match) return match;
     }
-    // fall back to most recent general (non-prescription) note
-    const general = elderNotes.filter((n) => !n.prescriptionId).sort((a, b) => b.createdAt - a.createdAt)[0];
-    if (general) return general;
-    // or just the most recent note overall
-    return elderNotes.sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
+    return null;
   };
 
   const playBeepLoop = () => {
@@ -41,7 +47,7 @@ export default function MissedDoseAlarm() {
         audioCtxRef.current = new AudioContext();
       }
       const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') ctx.resume();
+      if (ctx.state === "suspended") ctx.resume();
       const now = ctx.currentTime;
       for (let i = 0; i < 3; i++) {
         const osc = ctx.createOscillator();
@@ -49,7 +55,7 @@ export default function MissedDoseAlarm() {
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.frequency.value = 880;
-        osc.type = 'sine';
+        osc.type = "sine";
         gain.gain.setValueAtTime(0, now + i * 0.5);
         gain.gain.linearRampToValueAtTime(0.3, now + i * 0.5 + 0.05);
         gain.gain.linearRampToValueAtTime(0, now + i * 0.5 + 0.35);
@@ -142,16 +148,20 @@ export default function MissedDoseAlarm() {
       <div className="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center mb-6 animate-bounce">
         <AlertTriangle className="w-14 h-14 text-white" strokeWidth={2.5} />
       </div>
-      <h2 className="text-3xl font-bold text-white mb-2">Missed Dose Alert</h2>
+      <h2 className="text-3xl font-bold text-white mb-2">Medicine Reminder</h2>
       <p className="text-xl text-white/90 mb-1">{alert.medicineName}</p>
-      <p className="text-lg text-white/70 mb-6">Was due at {formatTime(alert.time)}</p>
+      <p className="text-lg text-white/70 mb-6">
+        Was due at {formatTime(alert.time)}
+      </p>
 
       {/* Voice note indicator */}
       {usingVoiceNote ? (
         <div className="flex flex-col items-center gap-2 mb-6">
           <div className="flex items-center gap-2 bg-white/15 rounded-2xl px-4 py-2.5">
             <Volume2 className="w-5 h-5 text-white animate-pulse" />
-            <span className="text-white font-semibold text-sm">Playing voice reminder from your Caregiver</span>
+            <span className="text-white font-semibold text-sm">
+              Playing voice reminder from your Caregiver
+            </span>
           </div>
           {voiceNoteLabel && (
             <p className="text-white/70 text-sm italic">"{voiceNoteLabel}"</p>
@@ -177,8 +187,7 @@ export default function MissedDoseAlarm() {
         onClick={dismiss}
         className="w-full max-w-xs py-5 rounded-2xl bg-white text-red-600 font-bold text-xl hover:bg-red-50 active:scale-[0.98] transition-all shadow-xl flex items-center justify-center gap-2"
       >
-        <Check className="w-7 h-7" strokeWidth={3} />
-        I Acknowledge
+        <Check className="w-7 h-7" strokeWidth={3} />I Acknowledge
       </button>
 
       <button
@@ -193,8 +202,8 @@ export default function MissedDoseAlarm() {
 }
 
 function formatTime(t: string): string {
-  const [h, m] = t.split(':').map(Number);
-  const period = h >= 12 ? 'PM' : 'AM';
+  const [h, m] = t.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
   const hr = h % 12 || 12;
-  return `${hr}:${String(m).padStart(2, '0')} ${period}`;
+  return `${hr}:${String(m).padStart(2, "0")} ${period}`;
 }

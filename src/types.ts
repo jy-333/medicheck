@@ -1,4 +1,4 @@
-export type Role = 'elder' | 'caregiver';
+export type Role = "elder" | "caregiver";
 
 export interface User {
   id: string;
@@ -36,7 +36,7 @@ export interface MedicineLog {
   elderId: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
-  status: 'pending' | 'taken' | 'missed';
+  status: "pending" | "taken" | "missed";
   confirmedAt?: number;
 }
 
@@ -44,7 +44,7 @@ export interface CheckIn {
   id: string;
   elderId: string;
   date: string; // YYYY-MM-DD
-  feeling: 'good' | 'okay' | 'bad';
+  feeling: "good" | "okay" | "bad";
   symptoms: string[];
   note: string;
   createdAt: number;
@@ -78,5 +78,6 @@ export type MissedAlert = {
   time: string;
   medicineName: string;
   acknowledged: boolean;
+  caregiverNotifiedAt?: number;
   createdAt: number;
 };
