@@ -55,6 +55,7 @@ interface AppContextValue {
   acknowledgeAlert: (alertId: string) => void;
   // check-ins
   addCheckIn: (c: Omit<CheckIn, "id" | "createdAt">) => void;
+  resolveCheckIn: (checkInId: string) => void;
   // stickers
   sendSticker: (type: string, milestone: number, message: string) => void;
   // voice notes
@@ -292,12 +293,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     },
     updatePrescription: (id, patch) => {
-      setState((prev) => ({
-        ...prev,
-        prescriptions: prev.prescriptions.map((p) =>
+      setState((prev) => {
+        const updatedPrescriptions = prev.prescriptions.map((p) =>
           p.id === id ? { ...p, ...patch } : p,
-        ),
-      }));
+        );
+        const target = updatedPrescriptions.find((p) => p.id === id);
+        if (!target) return prev;
+
+        const otherLogs = prev.logs.filter((l) => l.prescriptionId !== id);
+        const newLogs = generateLogsForPrescription(target, otherLogs);
+
+        return {
+          ...prev,
+          prescriptions: updatedPrescriptions,
+          logs: [...otherLogs, ...newLogs],
+        };
+      });
     },
     stopPrescription: (id) => {
       setState((prev) => ({
@@ -348,9 +359,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const filtered = prev.checkIns.filter(
           (x) => !(x.elderId === c.elderId && x.date === c.date),
         );
-        const full: CheckIn = { ...c, id: uid(), createdAt: Date.now() };
+        const full: CheckIn = {
+          ...c,
+          id: uid(),
+          createdAt: Date.now(),
+          resolved: false,
+        };
         return { ...prev, checkIns: [...filtered, full] };
       });
+    },
+    resolveCheckIn: (checkInId) => {
+      setState((prev) => ({
+        ...prev,
+        checkIns: prev.checkIns.map((c) =>
+          c.id === checkInId ? { ...c, resolved: true } : c,
+        ),
+      }));
     },
     sendSticker: (type, milestone, message) => {
       if (!currentUser) return;

@@ -211,7 +211,7 @@ export default function CaregiverHome({
           onClick={() => onNavigate("history")}
           className="bg-white border-2 border-gray-200 rounded-2xl p-4 text-left hover:border-teal-300 transition-all"
         >
-          <p className="font-bold text-gray-800">History</p>
+          <p className="font-bold text-gray-800">Medicine Management</p>
           <p className="text-xs text-gray-400">Medicine logs</p>
         </button>
       </div>

@@ -295,6 +295,7 @@ function PrescriptionForm({
   const [times, setTimes] = useState<string[]>(
     editing?.times?.length ? editing.times : ["08:00", "20:00"],
   );
+  const [isLongTerm, setIsLongTerm] = useState(editing?.isLongTerm ?? false);
   const [days, setDays] = useState(editing?.days ?? 30);
   const [totalDoses, setTotalDoses] = useState(editing?.totalDoses ?? 60);
   const [startDate, setStartDate] = useState(editing?.startDate ?? todayStr());
@@ -314,26 +315,25 @@ function PrescriptionForm({
 
   const save = () => {
     if (!name.trim()) return;
+    const normalizedDays = isLongTerm ? Math.max(days, 30) : days;
+    const prescriptionData = {
+      medicineName: name.trim(),
+      dose,
+      timesPerDay,
+      times,
+      days: normalizedDays,
+      isLongTerm,
+      totalDoses,
+      startDate,
+    };
     if (editing) {
       updatePrescription(editing.id, {
-        medicineName: name.trim(),
-        dose,
-        timesPerDay,
-        times,
-        days,
-        totalDoses,
-        startDate,
+        ...prescriptionData,
       });
     } else {
       addPrescription({
         elderId,
-        medicineName: name.trim(),
-        dose,
-        timesPerDay,
-        times,
-        days,
-        totalDoses,
-        startDate,
+        ...prescriptionData,
       });
     }
     onClose();
@@ -385,15 +385,46 @@ function PrescriptionForm({
               className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-teal-500 focus:outline-none"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-2 gap-3 items-stretch">
+            <div className="flex flex-col h-full">
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Times per day
               </label>
-              <div className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-700 font-semibold">
+              <div className="flex h-[52px] w-full items-center px-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-700 font-semibold">
                 {timesPerDay}x
               </div>
             </div>
+            <div className="flex flex-col h-full">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Duration
+              </label>
+              <div className="flex h-[52px] w-full items-center rounded-xl border-2 border-gray-200 p-1 bg-gray-50">
+                <button
+                  type="button"
+                  onClick={() => setIsLongTerm(false)}
+                  className={`flex-1 h-full rounded-lg px-2 text-xs font-semibold transition-all ${
+                    !isLongTerm
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500"
+                  }`}
+                >
+                  Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsLongTerm(true)}
+                  className={`flex-1 h-full rounded-lg px-2 text-xs font-semibold transition-all ${
+                    isLongTerm
+                      ? "bg-teal-500 text-white shadow-sm"
+                      : "text-gray-500"
+                  }`}
+                >
+                  Long-term
+                </button>
+              </div>
+            </div>
+          </div>
+          {!isLongTerm && (
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Days
@@ -406,7 +437,12 @@ function PrescriptionForm({
                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-teal-500 focus:outline-none"
               />
             </div>
-          </div>
+          )}
+          {isLongTerm && (
+            <div className="rounded-xl border-2 border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-700">
+              This prescription will continue until the caregiver stops it.
+            </div>
+          )}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Times

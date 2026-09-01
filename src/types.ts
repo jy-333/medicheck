@@ -23,7 +23,8 @@ export interface Prescription {
   dose: string; // e.g. "1 tablet"
   timesPerDay: number;
   times: string[]; // ["08:00", "20:00"]
-  days: number; // how many days it lasts
+  days: number; // how many days it lasts, or a fallback value for long-term plans
+  isLongTerm: boolean; // true for ongoing intake with no fixed end date
   startDate: string; // YYYY-MM-DD
   active: boolean;
   totalDoses: number; // total pills supply
@@ -47,6 +48,7 @@ export interface CheckIn {
   feeling: "good" | "okay" | "bad";
   symptoms: string[];
   note: string;
+  resolved?: boolean;
   createdAt: number;
 }
 

@@ -7,9 +7,9 @@ import type {
   Sticker,
   VoiceNote,
   MissedAlert,
-} from './types';
+} from "./types";
 
-const KEY = 'medpal_state_v1';
+const KEY = "medpal_state_v1";
 
 export interface AppState {
   users: User[];
@@ -48,7 +48,9 @@ export function saveState(state: AppState): void {
 }
 
 export function uid(): string {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  return (
+    Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
+  );
 }
 
 // ---- Date helpers ----
@@ -59,31 +61,38 @@ export function todayStr(): string {
 
 export function dateStr(d: Date): string {
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
 export function addDays(date: string, n: number): string {
-  const d = new Date(date + 'T00:00:00');
+  const d = new Date(date + "T00:00:00");
   d.setDate(d.getDate() + n);
   return dateStr(d);
 }
 
 export function parseDate(date: string): Date {
-  return new Date(date + 'T00:00:00');
+  return new Date(date + "T00:00:00");
 }
 
 // ---- Schedule generation ----
 
-export function generateLogsForPrescription(p: Prescription, existingLogs: MedicineLog[]): MedicineLog[] {
+export function generateLogsForPrescription(
+  p: Prescription,
+  existingLogs: MedicineLog[],
+): MedicineLog[] {
   const logs: MedicineLog[] = [];
-  const endDate = addDays(p.startDate, p.days - 1);
+  const endDate = p.isLongTerm ? todayStr() : addDays(p.startDate, p.days - 1);
   let d = p.startDate;
-  while (d <= endDate && d <= todayStr()) {
+  while (d <= endDate) {
     for (const time of p.times) {
       // skip if log already exists
-      if (existingLogs.some((l) => l.prescriptionId === p.id && l.date === d && l.time === time)) {
+      if (
+        existingLogs.some(
+          (l) => l.prescriptionId === p.id && l.date === d && l.time === time,
+        )
+      ) {
         continue;
       }
       const status = computeLogStatus(d, time);
@@ -101,46 +110,69 @@ export function generateLogsForPrescription(p: Prescription, existingLogs: Medic
   return logs;
 }
 
-export function computeLogStatus(date: string, time: string): 'pending' | 'taken' | 'missed' {
+export function computeLogStatus(
+  date: string,
+  time: string,
+): "pending" | "taken" | "missed" {
   const now = new Date();
-  const logDateTime = new Date(date + 'T' + time + ':00');
+  const logDateTime = new Date(date + "T" + time + ":00");
   // 15 min grace window before marking missed
-  if (now < logDateTime) return 'pending';
-  if (now.getTime() - logDateTime.getTime() > 15 * 60 * 1000) return 'missed';
-  return 'pending';
+  if (now < logDateTime) return "pending";
+  if (now.getTime() - logDateTime.getTime() > 15 * 60 * 1000) return "missed";
+  return "pending";
 }
 
-export function getTodaySchedule(prescriptions: Prescription[], logs: MedicineLog[]): MedicineLog[] {
+export function getTodaySchedule(
+  prescriptions: Prescription[],
+  logs: MedicineLog[],
+): MedicineLog[] {
   const t = todayStr();
   return logs
-    .filter((l) => l.date === t && prescriptions.some((p) => p.id === l.prescriptionId && p.active))
+    .filter(
+      (l) =>
+        l.date === t &&
+        prescriptions.some((p) => p.id === l.prescriptionId && p.active),
+    )
     .sort((a, b) => a.time.localeCompare(b.time));
 }
 
 export function dosesRemaining(p: Prescription, logs: MedicineLog[]): number {
-  const taken = logs.filter((l) => l.prescriptionId === p.id && l.status === 'taken').length;
+  const taken = logs.filter(
+    (l) => l.prescriptionId === p.id && l.status === "taken",
+  ).length;
   return Math.max(0, p.totalDoses - taken);
 }
 
-export function daysOfSupplyRemaining(p: Prescription, logs: MedicineLog[]): number {
+export function daysOfSupplyRemaining(
+  p: Prescription,
+  logs: MedicineLog[],
+): number {
   const remaining = dosesRemaining(p, logs);
   const perDay = p.timesPerDay || 1;
   return Math.floor(remaining / perDay);
 }
 
-export function computeStreak(prescriptions: Prescription[], logs: MedicineLog[]): number {
+export function computeStreak(
+  prescriptions: Prescription[],
+  logs: MedicineLog[],
+): number {
   // streak = consecutive days (ending today or yesterday) where every scheduled dose was taken on time
-  const activeIds = new Set(prescriptions.filter((p) => p.active).map((p) => p.id));
+  const activeIds = new Set(
+    prescriptions.filter((p) => p.active).map((p) => p.id),
+  );
   const allLogs = logs.filter((l) => activeIds.has(l.prescriptionId));
 
   let streak = 0;
   let d = todayStr();
   // allow today to not break streak if doses still pending
   const todayLogs = allLogs.filter((l) => l.date === d);
-  const todayMissed = todayLogs.some((l) => l.status === 'missed');
+  const todayMissed = todayLogs.some((l) => l.status === "missed");
   if (todayMissed) {
     d = addDays(d, -1);
-  } else if (todayLogs.length > 0 && todayLogs.every((l) => l.status === 'taken')) {
+  } else if (
+    todayLogs.length > 0 &&
+    todayLogs.every((l) => l.status === "taken")
+  ) {
     // today complete, count it
   } else if (todayLogs.length > 0) {
     // today pending, streak counts up to yesterday
@@ -157,7 +189,7 @@ export function computeStreak(prescriptions: Prescription[], logs: MedicineLog[]
       // For simplicity, if no logs, streak breaks
       break;
     }
-    const allTaken = dayLogs.every((l) => l.status === 'taken');
+    const allTaken = dayLogs.every((l) => l.status === "taken");
     if (!allTaken) break;
     streak++;
     d = addDays(d, -1);

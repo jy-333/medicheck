@@ -1,6 +1,6 @@
-import { useApp, getElderId } from '@/context';
-import { Smile, Meh, Frown, AlertTriangle, Link2 } from 'lucide-react';
-import type { CheckIn } from '@/types';
+import { useApp, getElderId } from "@/context";
+import { Smile, Meh, Frown, AlertTriangle, Link2, Check } from "lucide-react";
+import type { CheckIn } from "@/types";
 
 export default function CaregiverWellness() {
   const { state, currentUser } = useApp();
@@ -13,8 +13,12 @@ export default function CaregiverWellness() {
       <div className="px-5 pt-6">
         <div className="bg-amber-50 border-2 border-amber-200 rounded-3xl p-6 text-center">
           <Link2 className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-          <p className="font-bold text-amber-700 text-lg mb-1">No Elder paired yet</p>
-          <p className="text-amber-600 text-sm">Pair with an Elder to see their wellness check-ins.</p>
+          <p className="font-bold text-amber-700 text-lg mb-1">
+            No Elder paired yet
+          </p>
+          <p className="text-amber-600 text-sm">
+            Pair with an Elder to see their wellness check-ins.
+          </p>
         </div>
       </div>
     );
@@ -24,7 +28,9 @@ export default function CaregiverWellness() {
     .filter((c) => c.elderId === elderId)
     .sort((a, b) => b.date.localeCompare(a.date));
 
-  const badDays = checkIns.filter((c) => c.feeling === 'bad' || c.symptoms.length > 0);
+  const badDays = checkIns.filter(
+    (c) => !c.resolved && (c.feeling === "bad" || c.symptoms.length > 0),
+  );
 
   return (
     <div className="px-5 pt-6 pb-4">
@@ -35,17 +41,23 @@ export default function CaregiverWellness() {
       <div className="grid grid-cols-3 gap-2.5 mb-5">
         <div className="bg-green-50 rounded-2xl p-4 text-center">
           <Smile className="w-7 h-7 text-green-500 mx-auto mb-1" />
-          <p className="text-2xl font-bold text-green-600">{checkIns.filter((c) => c.feeling === 'good').length}</p>
+          <p className="text-2xl font-bold text-green-600">
+            {checkIns.filter((c) => c.feeling === "good").length}
+          </p>
           <p className="text-xs text-green-600">good days</p>
         </div>
         <div className="bg-amber-50 rounded-2xl p-4 text-center">
           <Meh className="w-7 h-7 text-amber-500 mx-auto mb-1" />
-          <p className="text-2xl font-bold text-amber-600">{checkIns.filter((c) => c.feeling === 'okay').length}</p>
+          <p className="text-2xl font-bold text-amber-600">
+            {checkIns.filter((c) => c.feeling === "okay").length}
+          </p>
           <p className="text-xs text-amber-600">okay days</p>
         </div>
         <div className="bg-red-50 rounded-2xl p-4 text-center">
           <Frown className="w-7 h-7 text-red-500 mx-auto mb-1" />
-          <p className="text-2xl font-bold text-red-600">{checkIns.filter((c) => c.feeling === 'bad').length}</p>
+          <p className="text-2xl font-bold text-red-600">
+            {checkIns.filter((c) => c.feeling === "bad").length}
+          </p>
           <p className="text-xs text-red-600">bad days</p>
         </div>
       </div>
@@ -57,7 +69,10 @@ export default function CaregiverWellness() {
             <AlertTriangle className="w-5 h-5 text-red-500" />
             <p className="font-bold text-red-700">Days to watch</p>
           </div>
-          <p className="text-red-600 text-sm">{badDays.length} day(s) marked as bad or with symptoms. Follow up with {elder.name.split(' ')[0]}.</p>
+          <p className="text-red-600 text-sm">
+            {badDays.length} day(s) marked as bad or with symptoms. Follow up
+            with {elder.name.split(" ")[0]}.
+          </p>
         </div>
       )}
 
@@ -80,33 +95,83 @@ export default function CaregiverWellness() {
 }
 
 function CheckInCard({ checkIn }: { checkIn: CheckIn }) {
-  const isBad = checkIn.feeling === 'bad' || checkIn.symptoms.length > 0;
+  const { resolveCheckIn } = useApp();
+  const isBad =
+    !checkIn.resolved &&
+    (checkIn.feeling === "bad" || checkIn.symptoms.length > 0);
   const config = {
-    good: { icon: Smile, color: 'text-green-600', bg: 'bg-green-100', border: 'border-green-200' },
-    okay: { icon: Meh, color: 'text-amber-500', bg: 'bg-amber-100', border: 'border-amber-200' },
-    bad: { icon: Frown, color: 'text-red-500', bg: 'bg-red-100', border: 'border-red-200' },
+    good: {
+      icon: Smile,
+      color: "text-green-600",
+      bg: "bg-green-100",
+      border: "border-green-200",
+    },
+    okay: {
+      icon: Meh,
+      color: "text-amber-500",
+      bg: "bg-amber-100",
+      border: "border-amber-200",
+    },
+    bad: {
+      icon: Frown,
+      color: "text-red-500",
+      bg: "bg-red-100",
+      border: "border-red-200",
+    },
   }[checkIn.feeling];
   const Icon = config.icon;
 
   return (
-    <div className={`bg-white rounded-2xl border-2 p-4 ${isBad ? 'border-red-200' : 'border-gray-200'}`}>
+    <div
+      className={`bg-white rounded-2xl border-2 p-4 ${isBad ? "border-red-200" : checkIn.resolved ? "border-green-200 bg-green-50/50" : "border-gray-200"}`}
+    >
       <div className="flex items-start gap-3">
-        <div className={`w-11 h-11 rounded-2xl ${config.bg} flex items-center justify-center shrink-0`}>
+        <div
+          className={`w-11 h-11 rounded-2xl ${config.bg} flex items-center justify-center shrink-0`}
+        >
           <Icon className={`w-6 h-6 ${config.color}`} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between">
-            <p className="font-bold text-gray-800">{formatDate(checkIn.date)}</p>
-            <span className={`text-sm font-semibold ${config.color}`}>{checkIn.feeling}</span>
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-bold text-gray-800">
+              {formatDate(checkIn.date)}
+            </p>
+            <div className="flex items-center gap-2">
+              {checkIn.resolved && (
+                <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                  Resolved
+                </span>
+              )}
+              {isBad && (
+                <button
+                  type="button"
+                  onClick={() => resolveCheckIn(checkIn.id)}
+                  className="w-8 h-8 rounded-xl bg-green-500 text-white flex items-center justify-center hover:bg-green-600 transition-all"
+                  aria-label={`Resolve ${formatDate(checkIn.date)}`}
+                  title="Mark as resolved"
+                >
+                  <Check className="w-4 h-4" strokeWidth={3} />
+                </button>
+              )}
+            </div>
           </div>
           {checkIn.symptoms.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {checkIn.symptoms.map((s) => (
-                <span key={s} className="bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-1 rounded-full">{s}</span>
+                <span
+                  key={s}
+                  className="bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-1 rounded-full"
+                >
+                  {s}
+                </span>
               ))}
             </div>
           )}
-          {checkIn.note && <p className="text-sm text-gray-500 mt-2 italic">"{checkIn.note}"</p>}
+          {checkIn.note && (
+            <p className="text-sm text-gray-500 mt-2 italic">
+              "{checkIn.note}"
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -114,11 +179,15 @@ function CheckInCard({ checkIn }: { checkIn: CheckIn }) {
 }
 
 function formatDate(d: string): string {
-  const date = new Date(d + 'T00:00:00');
+  const date = new Date(d + "T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diff = Math.round((today.getTime() - date.getTime()) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Yesterday';
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 }
