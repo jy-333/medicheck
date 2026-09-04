@@ -113,13 +113,13 @@ export function generateLogsForPrescription(
 export function computeLogStatus(
   date: string,
   time: string,
-): "pending" | "taken" | "missed" {
+): "upcoming" | "due" | "missed" {
   const now = new Date();
   const logDateTime = new Date(date + "T" + time + ":00");
-  // 15 min grace window before marking missed
-  if (now < logDateTime) return "pending";
-  if (now.getTime() - logDateTime.getTime() > 15 * 60 * 1000) return "missed";
-  return "pending";
+  if (now < logDateTime) return "upcoming";
+  if (now.getTime() - logDateTime.getTime() >= 4 * 60 * 60 * 1000)
+    return "missed";
+  return "due";
 }
 
 export function getTodaySchedule(

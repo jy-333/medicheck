@@ -1,17 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useApp } from "@/context";
 import type { VoiceNote } from "@/types";
-import {
-  AlertTriangle,
-  X,
-  Check,
-  Volume2,
-  Play,
-  RefreshCw,
-} from "lucide-react";
+import { AlertTriangle, Check, Volume2, RefreshCw } from "lucide-react";
 
 export default function MissedDoseAlarm() {
-  const { state, currentUser, acknowledgeAlert } = useApp();
+  const { state, currentUser, confirmDose, postponeDose } = useApp();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const audioCtxRef = useRef<AudioContext | null>(null);
   const voiceAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -110,10 +103,31 @@ export default function MissedDoseAlarm() {
       // no voice note — beep pattern, repeat every 2.5s
       playBeepLoop();
       const interval = setInterval(playBeepLoop, 2500);
-      return () => clearInterval(interval);
+      const stopTimer = window.setTimeout(
+        () => {
+          clearInterval(interval);
+          stopAllAudio();
+          setDismissed((prev) => new Set(prev).add(alert.id));
+        },
+        Math.max(0, alert.createdAt + 2 * 60 * 1000 - Date.now()),
+      );
+      return () => {
+        clearInterval(interval);
+        clearTimeout(stopTimer);
+      };
     }
 
-    return () => stopAllAudio();
+    const stopTimer = window.setTimeout(
+      () => {
+        stopAllAudio();
+        setDismissed((prev) => new Set(prev).add(alert.id));
+      },
+      Math.max(0, alert.createdAt + 2 * 60 * 1000 - Date.now()),
+    );
+    return () => {
+      clearTimeout(stopTimer);
+      stopAllAudio();
+    };
   }, [alert?.id]);
 
   // cleanup on unmount
@@ -128,9 +142,27 @@ export default function MissedDoseAlarm() {
 
   if (!alert) return null;
 
-  const dismiss = () => {
+  const confirm = () => {
     stopAllAudio();
-    acknowledgeAlert(alert.id);
+    const log = state.logs.find(
+      (item) =>
+        item.prescriptionId === alert.prescriptionId &&
+        item.date === alert.date &&
+        item.time === alert.time,
+    );
+    if (log) confirmDose(log.id);
+    setDismissed((prev) => new Set(prev).add(alert.id));
+  };
+
+  const remindLater = () => {
+    stopAllAudio();
+    const log = state.logs.find(
+      (item) =>
+        item.prescriptionId === alert.prescriptionId &&
+        item.date === alert.date &&
+        item.time === alert.time,
+    );
+    if (log) postponeDose(log.id);
     setDismissed((prev) => new Set(prev).add(alert.id));
   };
 
@@ -184,18 +216,18 @@ export default function MissedDoseAlarm() {
       </button>
 
       <button
-        onClick={dismiss}
+        onClick={confirm}
         className="w-full max-w-xs py-5 rounded-2xl bg-white text-red-600 font-bold text-xl hover:bg-red-50 active:scale-[0.98] transition-all shadow-xl flex items-center justify-center gap-2"
       >
-        <Check className="w-7 h-7" strokeWidth={3} />I Acknowledge
+        <Check className="w-7 h-7" strokeWidth={3} />
+        I've Taken It
       </button>
 
       <button
-        onClick={dismiss}
-        className="mt-3 text-white/70 font-medium flex items-center gap-1"
+        onClick={remindLater}
+        className="mt-3 text-white font-semibold bg-white/15 rounded-2xl px-5 py-3 hover:bg-white/25 transition-all"
       >
-        <X className="w-5 h-5" />
-        Dismiss
+        Remind Me Later
       </button>
     </div>
   );

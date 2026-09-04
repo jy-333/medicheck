@@ -11,7 +11,6 @@ import type {
   User,
   Pairing,
   Prescription,
-  MedicineLog,
   CheckIn,
   Sticker,
   VoiceNote,
@@ -52,6 +51,7 @@ interface AppContextValue {
   stopPrescription: (id: string) => void;
   // logs
   confirmDose: (logId: string) => void;
+  postponeDose: (logId: string) => void;
   acknowledgeAlert: (alertId: string) => void;
   // check-ins
   addCheckIn: (c: Omit<CheckIn, "id" | "createdAt">) => void;
@@ -79,7 +79,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveState(state);
   }, [state]);
 
-  // tick frequently so due-dose reminders can ring on time and repeat every 5 minutes
+  // One scheduler owns all dose transitions and reminder creation.
   const [, setTick] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => {
@@ -98,30 +98,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
         let changed = false;
         const newLogs = prev.logs.map((l) => {
-          if (l.status !== "pending") return l;
+          if (l.status === "taken" || l.status === "missed") return l;
 
           const logDateTime = new Date(`${l.date}T${l.time}:00`).getTime();
           if (now < logDateTime) return l;
 
           const s = computeLogStatus(l.date, l.time);
-          if (s === "missed") {
+          if (s !== l.status) {
             changed = true;
-            return { ...l, status: "missed" as const };
+            return { ...l, status: s };
           }
           return l;
         });
 
         const newAlerts: MissedAlert[] = [];
         for (const l of newLogs) {
-          if (l.status === "taken") continue;
+          if (l.status !== "due") continue;
 
           const logDateTime = new Date(`${l.date}T${l.time}:00`).getTime();
           if (now < logDateTime) continue;
 
-          const reminderIndex = Math.floor(
-            (now - logDateTime) / (5 * 60 * 1000),
-          );
-          const reminderCreatedAt = logDateTime + reminderIndex * 5 * 60 * 1000;
+          const reminderInterval = 7 * 60 * 1000;
+          let reminderCreatedAt =
+            l.nextReminderAt ??
+            logDateTime +
+              Math.floor((now - logDateTime) / reminderInterval) *
+                reminderInterval;
+          if (now < reminderCreatedAt) continue;
+          if (now >= reminderCreatedAt + 2 * 60 * 1000) {
+            if (l.nextReminderAt === undefined) continue;
+            reminderCreatedAt =
+              logDateTime +
+              Math.floor((now - logDateTime) / reminderInterval) *
+                reminderInterval;
+            if (
+              now < reminderCreatedAt ||
+              now >= reminderCreatedAt + 2 * 60 * 1000
+            )
+              continue;
+          }
           const key = `${l.prescriptionId}-${l.date}-${l.time}-${reminderCreatedAt}`;
           if (activeAlertKeys.has(key)) continue;
 
@@ -138,6 +153,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           });
           activeAlertKeys.add(key);
           changed = true;
+          if (l.nextReminderAt !== undefined) {
+            const logIndex = newLogs.indexOf(l);
+            newLogs[logIndex] = { ...l, nextReminderAt: undefined };
+          }
         }
 
         const currentUser = prev.currentUserId
@@ -145,7 +164,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : null;
         const currentUserIsCaregiver = currentUser?.role === "caregiver";
         const notificationLeadTime = 2 * 60 * 60 * 1000;
-        const nextAlerts = [...prev.alerts, ...newAlerts];
+        const missedDoseKeys = new Set(
+          newLogs
+            .filter((l) => l.status === "missed")
+            .map((l) => `${l.prescriptionId}-${l.date}-${l.time}`),
+        );
+        const nextAlerts = [...prev.alerts, ...newAlerts].map((alert) =>
+          missedDoseKeys.has(
+            `${alert.prescriptionId}-${alert.date}-${alert.time}`,
+          )
+            ? { ...alert, acknowledged: true }
+            : alert,
+        );
         const notifiedDoseKeys = new Set<string>();
 
         const alertsWithCaregiverNotice = nextAlerts.map((alert) => {
@@ -318,7 +348,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ),
         // remove future pending logs
         logs: prev.logs.filter(
-          (l) => !(l.prescriptionId === id && l.status === "pending"),
+          (l) => !(l.prescriptionId === id && l.status === "upcoming"),
         ),
       }));
     },
@@ -344,6 +374,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return a;
         }),
       }));
+    },
+    postponeDose: (logId) => {
+      setState((prev) => {
+        const log = prev.logs.find((l) => l.id === logId);
+        if (!log || log.status !== "due") return prev;
+        return {
+          ...prev,
+          logs: prev.logs.map((l) =>
+            l.id === logId
+              ? { ...l, nextReminderAt: Date.now() + 30 * 60 * 1000 }
+              : l,
+          ),
+          alerts: prev.alerts.map((a) =>
+            a.prescriptionId === log.prescriptionId &&
+            a.date === log.date &&
+            a.time === log.time
+              ? { ...a, acknowledged: true }
+              : a,
+          ),
+        };
+      });
     },
     acknowledgeAlert: (alertId) => {
       setState((prev) => ({
