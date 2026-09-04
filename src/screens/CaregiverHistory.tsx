@@ -182,6 +182,7 @@ export default function CaregiverHistory() {
                 .get(date)!
                 .sort((a, b) => a.time.localeCompare(b.time));
               const taken = logs.filter((l) => l.status === "taken").length;
+              const takenLate = logs.filter((l) => l.status === "taken-late").length;
               const missed = logs.filter((l) => l.status === "missed").length;
               return (
                 <div key={date}>
@@ -193,6 +194,11 @@ export default function CaregiverHistory() {
                       <span className="text-green-600 font-semibold">
                         {taken} taken
                       </span>
+                      {takenLate > 0 && (
+                        <span className="text-orange-600 font-semibold">
+                          {takenLate} taken late
+                        </span>
+                      )}
                       {missed > 0 && (
                         <span className="text-red-500 font-semibold">
                           {missed} missed
@@ -212,12 +218,14 @@ export default function CaregiverHistory() {
                             className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                               log.status === "taken"
                                 ? "bg-green-100 text-green-600"
+                                : log.status === "taken-late"
+                                  ? "bg-orange-100 text-orange-600"
                                 : log.status === "missed"
                                   ? "bg-red-100 text-red-500"
                                   : "bg-gray-100 text-gray-400"
                             }`}
                           >
-                            {log.status === "taken" ? (
+                            {log.status === "taken" || log.status === "taken-late" ? (
                               <Check className="w-4 h-4" strokeWidth={3} />
                             ) : (
                               <X className="w-4 h-4" />
@@ -229,6 +237,11 @@ export default function CaregiverHistory() {
                           <span className="text-gray-400 text-sm">
                             {formatTime(log.time)}
                           </span>
+                          {log.status === "taken-late" && (
+                            <span className="text-orange-600 text-xs font-semibold">
+                              Taken Late
+                            </span>
+                          )}
                         </div>
                       );
                     })}

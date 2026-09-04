@@ -142,13 +142,14 @@ function DoseCard({
   const isUpcoming = log.time > nowStr;
   const isMissed = log.status === "missed";
   const isTaken = log.status === "taken";
+  const isTakenLate = log.status === "taken-late";
   const isDue = log.status === "due";
-  const canConfirm = isDue;
+  const canConfirm = isDue || isMissed;
 
   return (
     <div
       className={`rounded-3xl p-5 border-2 transition-all ${
-        isTaken
+        isTaken || isTakenLate
           ? "bg-green-50 border-green-200"
           : isMissed
             ? "bg-red-50 border-red-200"
@@ -164,7 +165,7 @@ function DoseCard({
               isTaken ? "bg-green-500" : isMissed ? "bg-red-500" : "bg-teal-500"
             } text-white`}
           >
-            {isTaken ? (
+            {isTaken || isTakenLate ? (
               <Check className="w-6 h-6" strokeWidth={3} />
             ) : (
               <Pill className="w-6 h-6" />
@@ -187,6 +188,11 @@ function DoseCard({
               Taken at {formatTime(toTimeStr(log.confirmedAt))}
             </p>
           )}
+          {isTakenLate && log.confirmedAt && (
+            <p className="text-xs text-orange-600 mt-0.5">
+              Taken late at {formatTime(toTimeStr(log.confirmedAt))}
+            </p>
+          )}
           {isMissed && (
             <p className="text-xs text-red-600 mt-0.5 font-semibold">Missed</p>
           )}
@@ -204,7 +210,8 @@ function DoseCard({
           onClick={onConfirm}
           className="w-full py-4 rounded-2xl bg-teal-500 text-white font-bold text-lg hover:bg-teal-600 active:scale-[0.98] transition-all shadow-md shadow-teal-500/30 flex items-center justify-center gap-2"
         >
-          <Check className="w-6 h-6" strokeWidth={3} />I Took It
+          <Check className="w-6 h-6" strokeWidth={3} />
+          {isMissed ? "I Took It Later" : "I've Taken It"}
         </button>
       )}
       {isUpcoming && (
@@ -217,6 +224,12 @@ function DoseCard({
         <div className="w-full py-3 rounded-2xl bg-green-100 text-green-700 font-bold text-base flex items-center justify-center gap-2">
           <Check className="w-5 h-5" strokeWidth={3} />
           Confirmed
+        </div>
+      )}
+      {isTakenLate && (
+        <div className="w-full py-3 rounded-2xl bg-orange-100 text-orange-700 font-bold text-base flex items-center justify-center gap-2">
+          <Check className="w-5 h-5" strokeWidth={3} />
+          Taken Late
         </div>
       )}
     </div>

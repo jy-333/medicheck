@@ -138,7 +138,9 @@ export function getTodaySchedule(
 
 export function dosesRemaining(p: Prescription, logs: MedicineLog[]): number {
   const taken = logs.filter(
-    (l) => l.prescriptionId === p.id && l.status === "taken",
+    (l) =>
+      l.prescriptionId === p.id &&
+      (l.status === "taken" || l.status === "taken-late"),
   ).length;
   return Math.max(0, p.totalDoses - taken);
 }

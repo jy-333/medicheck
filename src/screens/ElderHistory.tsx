@@ -33,6 +33,7 @@ export default function ElderHistory() {
           {dates.map((date) => {
             const logs = byDate.get(date)!.sort((a, b) => a.time.localeCompare(b.time));
             const taken = logs.filter((l) => l.status === 'taken').length;
+            const takenLate = logs.filter((l) => l.status === 'taken-late').length;
             const missed = logs.filter((l) => l.status === 'missed').length;
             return (
               <div key={date}>
@@ -42,6 +43,9 @@ export default function ElderHistory() {
                     <span className="flex items-center gap-1 text-green-600 font-semibold">
                       <Check className="w-4 h-4" /> {taken}
                     </span>
+                    {takenLate > 0 && (
+                      <span className="text-orange-600 font-semibold">{takenLate} late</span>
+                    )}
                     {missed > 0 && (
                       <span className="flex items-center gap-1 text-red-500 font-semibold">
                         <X className="w-4 h-4" /> {missed}
@@ -61,6 +65,8 @@ export default function ElderHistory() {
                           className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                             log.status === 'taken'
                               ? 'bg-green-100 text-green-600'
+                              : log.status === 'taken-late'
+                              ? 'bg-orange-100 text-orange-600'
                               : log.status === 'missed'
                               ? 'bg-red-100 text-red-500'
                               : 'bg-gray-100 text-gray-400'
@@ -76,6 +82,9 @@ export default function ElderHistory() {
                           <p className="font-semibold text-gray-600 text-sm">{formatTime(log.time)}</p>
                           {log.status === 'taken' && log.confirmedAt && (
                             <p className="text-xs text-green-500">{formatTime(toTimeStr(log.confirmedAt))}</p>
+                          )}
+                          {log.status === 'taken-late' && log.confirmedAt && (
+                            <p className="text-xs text-orange-500">Taken late at {formatTime(toTimeStr(log.confirmedAt))}</p>
                           )}
                           {log.status === 'missed' && <p className="text-xs text-red-500 font-semibold">Missed</p>}
                         </div>

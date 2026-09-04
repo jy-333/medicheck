@@ -52,6 +52,7 @@ export default function CaregiverHome({
     elderLogs,
   );
   const takenCount = schedule.filter((l) => l.status === "taken").length;
+  const takenLateCount = schedule.filter((l) => l.status === "taken-late").length;
   const missedToday = schedule.filter((l) => l.status === "missed");
 
   // missed doses (last 7 days)
@@ -95,7 +96,9 @@ export default function CaregiverHome({
           <p className="text-2xl font-bold">
             {takenCount}/{schedule.length}
           </p>
-          <p className="text-xs opacity-80">today</p>
+          <p className="text-xs opacity-80">
+            today{takenLateCount > 0 ? ` (${takenLateCount} late)` : ""}
+          </p>
         </div>
         <div className="bg-gradient-to-br from-red-400 to-red-500 rounded-2xl p-4 text-white">
           <AlertTriangle className="w-6 h-6 mb-1" />
@@ -165,12 +168,14 @@ export default function CaregiverHome({
                   className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                     log.status === "taken"
                       ? "bg-green-100 text-green-600"
+                      : log.status === "taken-late"
+                        ? "bg-orange-100 text-orange-600"
                       : log.status === "missed"
                         ? "bg-red-100 text-red-500"
                         : "bg-gray-100 text-gray-400"
                   }`}
                 >
-                  {log.status === "taken" ? (
+                  {log.status === "taken" || log.status === "taken-late" ? (
                     <Check className="w-5 h-5" strokeWidth={3} />
                   ) : (
                     <Pill className="w-4 h-4" />
@@ -189,7 +194,7 @@ export default function CaregiverHome({
                   <p
                     className={`text-xs font-semibold ${log.status === "taken" ? "text-green-500" : log.status === "missed" ? "text-red-500" : "text-gray-400"}`}
                   >
-                    {log.status}
+                    {log.status === "taken-late" ? "Taken Late" : log.status}
                   </p>
                 </div>
               </div>

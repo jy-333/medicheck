@@ -37,7 +37,7 @@ export interface MedicineLog {
   elderId: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
-  status: "upcoming" | "due" | "taken" | "missed";
+  status: "upcoming" | "due" | "taken" | "missed" | "taken-late";
   nextReminderAt?: number;
   confirmedAt?: number;
 }

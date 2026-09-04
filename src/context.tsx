@@ -98,7 +98,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
         let changed = false;
         const newLogs = prev.logs.map((l) => {
-          if (l.status === "taken" || l.status === "missed") return l;
+          if (l.status === "taken" || l.status === "taken-late" || l.status === "missed") return l;
 
           const logDateTime = new Date(`${l.date}T${l.time}:00`).getTime();
           if (now < logDateTime) return l;
@@ -353,27 +353,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
     },
     confirmDose: (logId) => {
-      setState((prev) => ({
-        ...prev,
-        logs: prev.logs.map((l) =>
-          l.id === logId
-            ? { ...l, status: "taken" as const, confirmedAt: Date.now() }
-            : l,
-        ),
-        // dismiss related alert
-        alerts: prev.alerts.map((a) => {
-          const log = prev.logs.find((l) => l.id === logId);
-          if (
-            log &&
-            a.prescriptionId === log.prescriptionId &&
-            a.date === log.date &&
-            a.time === log.time
-          ) {
-            return { ...a, acknowledged: true };
-          }
-          return a;
-        }),
-      }));
+      setState((prev) => {
+        const log = prev.logs.find((l) => l.id === logId);
+        if (!log || log.status === "taken" || log.status === "taken-late") {
+          return prev;
+        }
+        const now = Date.now();
+        const scheduledAt = new Date(`${log.date}T${log.time}:00`).getTime();
+        if (now < scheduledAt) return prev;
+        const status =
+          now - scheduledAt >= 4 * 60 * 60 * 1000 ? "taken-late" : "taken";
+        return {
+          ...prev,
+          logs: prev.logs.map((item) =>
+            item.id === logId
+              ? { ...item, status, nextReminderAt: undefined, confirmedAt: now }
+              : item,
+          ),
+          alerts: prev.alerts.map((alert) =>
+            alert.prescriptionId === log.prescriptionId &&
+            alert.date === log.date &&
+            alert.time === log.time
+              ? { ...alert, acknowledged: true }
+              : alert,
+          ),
+        };
+      });
     },
     postponeDose: (logId) => {
       setState((prev) => {
